@@ -1,0 +1,10 @@
+# Set default behavior to automatically normalize line endings to LF
+* text=auto eol=lf
+
+# Prisma generated contracts and snapshots (GitHub linguist)
+backend/src/prisma/contract.json linguist-generated
+backend/src/prisma/contract.d.ts linguist-generated
+backend/src/prisma/ops.json linguist-generated
+backend/src/prisma/migration.json linguist-generated
+backend/migrations/snapshots/**/contract.json linguist-generated
+backend/migrations/snapshots/**/contract.d.ts linguist-generated
