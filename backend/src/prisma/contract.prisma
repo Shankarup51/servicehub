@@ -1,15 +1,1235 @@
 // use prisma-8
 
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ProviderStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ServiceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum BookingHoldStatus {
+  ACTIVE
+  RELEASED
+  EXPIRED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  EXPIRED
+  CANCELLED
+  PROVIDER_UNAVAILABLE
+  REASSIGNMENT_PENDING
+  NEW_PROVIDER_ASSIGNED
+}
+
+enum CancellationActor {
+  CUSTOMER
+  PROVIDER
+  ADMIN
+  SUPPORT
+  SYSTEM
+}
+
+enum RescheduleStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentMethod {
+  ONLINE
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REFUND_PENDING
+  REFUNDED
+  CASH_PENDING
+}
+
+enum PaymentAttemptStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum CouponDiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum CouponScope {
+  PLATFORM
+  SERVICE
+  CATEGORY
+}
+
+
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String
-  firstName    String
-  lastName     String?
-  phone        String?  @unique
-  emailVerified Boolean @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now())
+  id            Int          @id @default(autoincrement())
+  email         VarChar(255) @unique
+  passwordHash  String
+  firstName     VarChar(100)
+  lastName      VarChar(100)?
+  phone         VarChar(20)? @unique
+  emailVerified Boolean      @default(false)
+  status        UserStatus   @default(ACTIVE)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @default(now())
+
+  userRoles UserRole[]
+
+  refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+
+  providerProfile ProviderProfile?
+
+  verificationReviews ProviderVerification[]
+    @relation("VerificationReviewer")
+
+  bookingHolds BookingHold[]
+
+  savedAddresses SavedAddress[]
+
+  customerBookings Booking[]
+    @relation("CustomerBookings")
+
+  bookingStatusChanges BookingStatusHistory[]
+    @relation("BookingStatusActors")
+
+  rescheduleRequestsMade RescheduleRequest[]
+    @relation("RescheduleRequesters")
+
+  rescheduleResponses RescheduleRequest[]
+    @relation("RescheduleResponders")
+
+  reassignmentActions BookingReassignment[]
+    @relation("BookingReassignmentActors")
+
+  reviews Review[]
+    @relation("CustomerReviews")
+
+  couponUsages CouponUsage[]
+
+  notifications Notification[]
+
+  auditLogs AuditLog[]
+    @relation("AuditActors")
 
   @@map("users")
+}
+
+
+model Role {
+  id          Int          @id @default(autoincrement())
+  name        VarChar(50)  @unique
+  description String?
+  createdAt   DateTime     @default(now())
+
+  userRoles      UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+
+model Permission {
+  id          Int          @id @default(autoincrement())
+  code        VarChar(100) @unique
+  description String?
+  createdAt   DateTime     @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+
+model UserRole {
+  userId     Int
+  roleId     Int
+  assignedAt DateTime @default(now())
+
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  role Role @relation(
+    fields: [roleId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+  assignedAt   DateTime @default(now())
+
+  role Role @relation(
+    fields: [roleId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  permission Permission @relation(
+    fields: [permissionId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+
+model EmailVerificationToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
+}
+
+
+model ProviderProfile {
+  id          Int            @id @default(autoincrement())
+  userId      Int            @unique
+  displayName VarChar(150)
+  bio         String?
+  status      ProviderStatus @default(ACTIVE)
+  timezone    VarChar(100)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @default(now())
+
+  user User @relation(
+    fields: [userId],
+    references: [id]
+  )
+
+  verifications ProviderVerification[]
+  serviceAreas  ProviderServiceArea[]
+  services      Service[]
+  availability  Availability[]
+  blockedSlots  BlockedSlot[]
+  bookingHolds  BookingHold[]
+
+  bookings Booking[]
+    @relation("ProviderBookings")
+
+  oldReassignments BookingReassignment[]
+    @relation("OldProviderReassignments")
+
+  newReassignments BookingReassignment[]
+    @relation("NewProviderReassignments")
+
+  reviews Review[]
+    @relation("ProviderReviews")
+
+  providerResponses ProviderResponse[]
+
+  @@map("provider_profiles")
+}
+
+
+model ProviderVerification {
+  id              Int                @id @default(autoincrement())
+  providerId      Int
+  status          VerificationStatus @default(DRAFT)
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedBy      Int?
+  rejectionReason String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @default(now())
+
+  provider ProviderProfile @relation(
+    fields: [providerId],
+    references: [id]
+  )
+
+  reviewer User? @relation(
+    "VerificationReviewer",
+    fields: [reviewedBy],
+    references: [id],
+    onDelete: SetNull
+  )
+
+  documents VerificationDocument[]
+
+  @@index([providerId])
+  @@index([status])
+  @@index([reviewedBy])
+  @@map("provider_verifications")
+}
+
+
+model VerificationDocument {
+  id             Int      @id @default(autoincrement())
+  verificationId Int
+  documentType   VarChar(50)
+  storageKey     String
+  fileName       VarChar(255)
+  mimeType       VarChar(100)
+  createdAt      DateTime @default(now())
+
+  verification ProviderVerification @relation(
+    fields: [verificationId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([verificationId])
+  @@map("verification_documents")
+}
+
+
+model ProviderServiceArea {
+  id        Int         @id @default(autoincrement())
+  providerId Int
+  city      VarChar(100)
+  area      VarChar(150)
+  pinCode   VarChar(10)
+
+  provider ProviderProfile @relation(
+    fields: [providerId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([providerId, city, area, pinCode])
+  @@index([providerId])
+  @@map("provider_service_areas")
+}
+
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  parentId    Int?
+  name        VarChar(100)
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+
+  parent Category?
+    @relation(
+      "CategoryHierarchy",
+      fields: [parentId],
+      references: [id]
+    )
+
+  children Category[]
+    @relation("CategoryHierarchy")
+
+  services Service[]
+
+  couponCategories CouponCategory[]
+
+  @@index([parentId])
+
+  // Child category names must be unique under the same parent.
+  @@index(
+    [parentId, name],
+    unique: true,
+    where: "\"parentId\" IS NOT NULL",
+    name: "category_parent_name_unique"
+  )
+
+  // Root category names must be globally unique.
+  @@index(
+    expression: "name",
+    unique: true,
+    where: "\"parentId\" IS NULL",
+    name: "category_root_name_unique"
+  )
+
+  @@map("categories")
+}
+
+
+model Service {
+  id              Int           @id @default(autoincrement())
+  providerId      Int
+  categoryId      Int
+  name            VarChar(150)
+  description     String
+  price           Numeric(12, 2)
+  durationMinutes Int
+  status          ServiceStatus @default(ACTIVE)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now())
+
+  provider ProviderProfile @relation(
+    fields: [providerId],
+    references: [id]
+  )
+
+  category Category @relation(
+    fields: [categoryId],
+    references: [id]
+  )
+
+  images ServiceImage[]
+
+  bookingHolds BookingHold[]
+
+  bookings Booking[]
+    @relation("ServiceBookings")
+
+  couponServices CouponService[]
+
+  @@unique([providerId, name])
+
+  @@index([providerId])
+  @@index([categoryId])
+
+  @@check(
+    expression: "price > 0",
+    name: "service_price_positive"
+  )
+
+  @@check(
+    expression: "\"durationMinutes\" > 0",
+    name: "service_duration_positive"
+  )
+
+  @@map("services")
+}
+
+
+model ServiceImage {
+  id         Int      @id @default(autoincrement())
+  serviceId  Int
+  storageKey String
+  fileName   VarChar(255)
+  mimeType   VarChar(100)
+  sortOrder  Int      @default(0)
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  service Service @relation(
+    fields: [serviceId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([serviceId, sortOrder])
+
+  // A service can have at most one primary image.
+  @@index(
+    [serviceId],
+    unique: true,
+    where: "\"isPrimary\" = true",
+    name: "service_primary_image_unique"
+  )
+
+  @@index([serviceId])
+  @@map("service_images")
+}
+
+
+model Availability {
+  id          Int       @id @default(autoincrement())
+  providerId  Int
+  dayOfWeek   DayOfWeek
+  startTime   Time
+  endTime     Time
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+
+  provider ProviderProfile @relation(
+    fields: [providerId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([providerId, dayOfWeek])
+
+  @@check(
+    expression: "\"endTime\" > \"startTime\"",
+    name: "availability_time_range_valid"
+  )
+
+  @@map("availability")
+}
+
+
+model BlockedSlot {
+  id         Int      @id @default(autoincrement())
+  providerId Int
+  startAt    DateTime
+  endAt      DateTime
+  reason     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now())
+
+  provider ProviderProfile @relation(
+    fields: [providerId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([providerId, startAt])
+
+  @@check(
+    expression: "\"endAt\" > \"startAt\"",
+    name: "blocked_slot_time_range_valid"
+  )
+
+  @@map("blocked_slots")
+}
+
+
+model BookingHold {
+  id         Int               @id @default(autoincrement())
+  providerId Int
+  serviceId  Int
+  customerId Int
+  bookingId  Int?
+  startAt    DateTime
+  endAt      DateTime
+  expiresAt  DateTime
+  status     BookingHoldStatus @default(ACTIVE)
+  releasedAt DateTime?
+  createdAt  DateTime          @default(now())
+
+  provider ProviderProfile @relation(
+    fields: [providerId],
+    references: [id]
+  )
+
+  service Service @relation(
+    fields: [serviceId],
+    references: [id]
+  )
+
+  customer User @relation(
+    fields: [customerId],
+    references: [id]
+  )
+
+  booking Booking? @relation(
+    fields: [bookingId],
+    references: [id]
+  )
+
+  @@index([providerId, startAt, endAt])
+  @@index([customerId])
+  @@index([bookingId])
+  @@index([expiresAt, status])
+
+  @@check(
+    expression: "\"endAt\" > \"startAt\"",
+    name: "booking_hold_time_range_valid"
+  )
+
+  @@check(
+    expression: "\"expiresAt\" > \"startAt\"",
+    name: "booking_hold_expiry_valid"
+  )
+
+  @@map("booking_holds")
+}
+
+
+model SavedAddress {
+  id         Int         @id @default(autoincrement())
+  customerId Int
+  label      VarChar(100)
+  address    String
+  city       VarChar(100)
+  area       VarChar(150)
+  pinCode    VarChar(10)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @default(now())
+
+  customer User @relation(
+    fields: [customerId],
+    references: [id]
+  )
+
+  @@index([customerId])
+  @@map("saved_addresses")
+}
+
+
+model Booking {
+  id                     Int           @id @default(autoincrement())
+  customerId             Int
+  providerId             Int
+  serviceId              Int
+  serviceName            VarChar(150)
+  servicePrice           Numeric(12, 2)
+  serviceDurationMinutes Int
+  discountAmount         Numeric(12, 2)
+  finalAmount             Numeric(12, 2)
+  startAt                DateTime
+  endAt                  DateTime
+  status                 BookingStatus  @default(PENDING)
+  customerNote           String?
+  providerNote           String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @default(now())
+
+  customer User @relation(
+    "CustomerBookings",
+    fields: [customerId],
+    references: [id]
+  )
+
+  provider ProviderProfile @relation(
+    "ProviderBookings",
+    fields: [providerId],
+    references: [id]
+  )
+
+  service Service @relation(
+    "ServiceBookings",
+    fields: [serviceId],
+    references: [id]
+  )
+
+  location ServiceLocation?
+
+  statusHistory BookingStatusHistory[]
+
+  cancellation Cancellation?
+
+  rescheduleRequests RescheduleRequest[]
+
+  reassignments BookingReassignment[]
+
+  bookingHolds BookingHold[]
+
+  payment Payment?
+
+  review Review?
+
+  couponUsage CouponUsage?
+
+  @@index([customerId, createdAt])
+  @@index([providerId, startAt])
+  @@index([serviceId])
+  @@index([status])
+
+  @@check(
+    expression: "\"endAt\" > \"startAt\"",
+    name: "booking_time_range_valid"
+  )
+
+  @@check(
+    expression: "\"servicePrice\" >= 0",
+    name: "booking_service_price_non_negative"
+  )
+
+  @@check(
+    expression: "\"discountAmount\" >= 0",
+    name: "booking_discount_non_negative"
+  )
+
+  @@check(
+    expression: "\"finalAmount\" >= 0",
+    name: "booking_final_amount_non_negative"
+  )
+
+  @@map("bookings")
+}
+
+
+model ServiceLocation {
+  id        Int      @id @default(autoincrement())
+  bookingId Int      @unique
+  label     VarChar(100)?
+  address   String
+  city      VarChar(100)
+  area      VarChar(150)
+  pinCode   VarChar(10)
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(
+    fields: [bookingId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@map("service_locations")
+}
+
+
+model BookingStatusHistory {
+  id         Int           @id @default(autoincrement())
+  bookingId  Int
+  fromStatus BookingStatus?
+  toStatus   BookingStatus
+  changedBy  Int?
+  reason     String?
+  createdAt  DateTime      @default(now())
+
+  booking Booking @relation(
+    fields: [bookingId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  actor User? @relation(
+    "BookingStatusActors",
+    fields: [changedBy],
+    references: [id],
+    onDelete: SetNull
+  )
+
+  @@index([bookingId, createdAt])
+  @@index([changedBy])
+  @@map("booking_status_history")
+}
+
+
+model Cancellation {
+  id          Int              @id @default(autoincrement())
+  bookingId   Int              @unique
+  cancelledBy CancellationActor
+  reasonCode  VarChar(50)
+  explanation String?
+  cancelledAt DateTime         @default(now())
+
+  booking Booking @relation(
+    fields: [bookingId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@map("cancellations")
+}
+
+
+model RescheduleRequest {
+  id               Int              @id @default(autoincrement())
+  bookingId        Int
+  requestedBy      Int
+  oldStartAt       DateTime
+  oldEndAt         DateTime
+  requestedStartAt DateTime
+  requestedEndAt   DateTime
+  status           RescheduleStatus @default(PENDING)
+  respondedBy      Int?
+  respondedAt      DateTime?
+  reason           String?
+  createdAt        DateTime         @default(now())
+
+  booking Booking @relation(
+    fields: [bookingId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  requester User @relation(
+    "RescheduleRequesters",
+    fields: [requestedBy],
+    references: [id]
+  )
+
+  responder User? @relation(
+    "RescheduleResponders",
+    fields: [respondedBy],
+    references: [id],
+    onDelete: SetNull
+  )
+
+  @@index([bookingId, createdAt])
+  @@index([requestedBy])
+  @@index([respondedBy])
+  @@map("reschedule_requests")
+}
+
+
+model BookingReassignment {
+  id            Int      @id @default(autoincrement())
+  bookingId     Int
+  oldProviderId Int
+  newProviderId Int
+  reason        String
+  assignedBy    Int?
+  createdAt     DateTime @default(now())
+
+  booking Booking @relation(
+    fields: [bookingId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  oldProvider ProviderProfile @relation(
+    "OldProviderReassignments",
+    fields: [oldProviderId],
+    references: [id]
+  )
+
+  newProvider ProviderProfile @relation(
+    "NewProviderReassignments",
+    fields: [newProviderId],
+    references: [id]
+  )
+
+  actor User? @relation(
+    "BookingReassignmentActors",
+    fields: [assignedBy],
+    references: [id],
+    onDelete: SetNull
+  )
+
+  @@index([bookingId, createdAt])
+  @@index([oldProviderId])
+  @@index([newProviderId])
+  @@index([assignedBy])
+  @@map("booking_reassignments")
+}
+
+
+model Payment {
+  id        Int           @id @default(autoincrement())
+  bookingId Int           @unique
+  method    PaymentMethod
+  status    PaymentStatus @default(PENDING)
+  amount    Numeric(12, 2)
+  currency  VarChar(3)    @default("INR")
+  paidAt    DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @default(now())
+
+  booking Booking @relation(
+    fields: [bookingId],
+    references: [id]
+  )
+
+  attempts PaymentAttempt[]
+
+  refund Refund?
+
+  @@check(
+    expression: "amount >= 0",
+    name: "payment_amount_non_negative"
+  )
+
+  @@map("payments")
+}
+
+
+model PaymentAttempt {
+  id               Int                  @id @default(autoincrement())
+  paymentId        Int
+  attemptNumber    Int
+  status           PaymentAttemptStatus
+  gateway          VarChar(50)?
+  gatewayOrderId   VarChar(255)?
+  gatewayPaymentId VarChar(255)?
+  idempotencyKey   VarChar(255)?
+  failureCode      VarChar(100)?
+  failureMessage   String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @default(now())
+
+  payment Payment @relation(
+    fields: [paymentId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([paymentId, attemptNumber])
+
+  // Only one attempt can ever be successful for a payment.
+  @@index(
+    [paymentId],
+    unique: true,
+    where: "status = 'SUCCESS'",
+    name: "payment_one_successful_attempt"
+  )
+
+  @@index([paymentId, createdAt])
+
+  @@map("payment_attempts")
+}
+
+
+model Refund {
+  id              Int          @id @default(autoincrement())
+  paymentId       Int          @unique
+  amount          Numeric(12, 2)
+  status          RefundStatus @default(PENDING)
+  reason          String
+  gatewayRefundId VarChar(255)?
+  initiatedAt     DateTime     @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @default(now())
+
+  payment Payment @relation(
+    fields: [paymentId],
+    references: [id]
+  )
+
+  @@check(
+    expression: "amount >= 0",
+    name: "refund_amount_non_negative"
+  )
+
+  @@map("refunds")
+}
+
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  bookingId  Int      @unique
+  customerId Int
+  providerId Int
+  rating     Int
+  comment    String?
+  isDeleted  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  booking Booking @relation(
+    fields: [bookingId],
+    references: [id]
+  )
+
+  customer User @relation(
+    "CustomerReviews",
+    fields: [customerId],
+    references: [id]
+  )
+
+  provider ProviderProfile @relation(
+    "ProviderReviews",
+    fields: [providerId],
+    references: [id]
+  )
+
+  providerResponse ProviderResponse?
+
+  @@check(
+    expression: "rating >= 1 AND rating <= 5",
+    name: "review_rating_range"
+  )
+
+  @@index([customerId, createdAt])
+  @@index([providerId, createdAt])
+  @@index([providerId, rating])
+
+  @@map("reviews")
+}
+
+
+model ProviderResponse {
+  id         Int      @id @default(autoincrement())
+  reviewId   Int      @unique
+  providerId Int
+  response   String
+  createdAt  DateTime @default(now())
+
+  review Review @relation(
+    fields: [reviewId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  provider ProviderProfile @relation(
+    fields: [providerId],
+    references: [id]
+  )
+
+  @@index([providerId, createdAt])
+  @@map("provider_responses")
+}
+
+
+model Coupon {
+  id                 Int                @id @default(autoincrement())
+  code               VarChar(50)        @unique
+  description        String?
+  discountType       CouponDiscountType
+  discountValue      Numeric(12, 2)
+  maxDiscountAmount  Numeric(12, 2)?
+  scope              CouponScope        @default(PLATFORM)
+  startsAt           DateTime
+  expiresAt          DateTime
+  maxTotalUses       Int?
+  maxUsesPerCustomer Int?
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @default(now())
+
+  services CouponService[]
+
+  categories CouponCategory[]
+
+  usages CouponUsage[]
+
+  @@check(
+    expression: "\"discountValue\" > 0",
+    name: "coupon_discount_positive"
+  )
+
+  @@check(
+    expression: "\"discountType\" <> 'PERCENTAGE' OR \"discountValue\" <= 100",
+    name: "coupon_percentage_max"
+  )
+
+  @@check(
+    expression: "\"expiresAt\" > \"startsAt\"",
+    name: "coupon_validity_range"
+  )
+
+  @@check(
+    expression: "\"maxDiscountAmount\" IS NULL OR \"maxDiscountAmount\" > 0",
+    name: "coupon_max_discount_positive"
+  )
+
+  @@check(
+    expression: "\"maxTotalUses\" IS NULL OR \"maxTotalUses\" > 0",
+    name: "coupon_max_total_uses_positive"
+  )
+
+  @@check(
+    expression: "\"maxUsesPerCustomer\" IS NULL OR \"maxUsesPerCustomer\" > 0",
+    name: "coupon_max_customer_uses_positive"
+  )
+
+  @@index([isActive, startsAt, expiresAt])
+  @@index([scope])
+
+  @@map("coupons")
+}
+
+
+model CouponService {
+  couponId  Int
+  serviceId Int
+
+  coupon Coupon @relation(
+    fields: [couponId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  service Service @relation(
+    fields: [serviceId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@id([couponId, serviceId])
+  @@index([serviceId])
+
+  @@map("coupon_services")
+}
+
+
+model CouponCategory {
+  couponId   Int
+  categoryId Int
+
+  coupon Coupon @relation(
+    fields: [couponId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  category Category @relation(
+    fields: [categoryId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@id([couponId, categoryId])
+  @@index([categoryId])
+
+  @@map("coupon_categories")
+}
+
+
+model CouponUsage {
+  id             Int          @id @default(autoincrement())
+  couponId       Int
+  customerId     Int
+  bookingId      Int          @unique
+  discountAmount Numeric(12,2)
+  createdAt      DateTime     @default(now())
+
+  coupon Coupon @relation(
+    fields: [couponId],
+    references: [id]
+  )
+
+  customer User @relation(
+    fields: [customerId],
+    references: [id]
+  )
+
+  booking Booking @relation(
+    fields: [bookingId],
+    references: [id]
+  )
+
+  @@check(
+    expression: "\"discountAmount\" >= 0",
+    name: "coupon_usage_discount_non_negative"
+  )
+
+  @@index([couponId, createdAt])
+  @@index([couponId, customerId])
+  @@index([customerId, createdAt])
+
+  @@map("coupon_usages")
+}
+
+
+model Notification {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  type       VarChar(100)
+  title      VarChar(200)
+  message    String
+  entityType VarChar(50)?
+  entityId   Int?
+  isRead     Boolean  @default(false)
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  user User @relation(
+    fields: [userId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([userId, createdAt])
+  @@index([userId, isRead, createdAt])
+  @@index([entityType, entityId])
+
+  @@map("notifications")
+}
+
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  actorUserId Int?
+  action      VarChar(100)
+  entityType  VarChar(50)
+  entityId    Int?
+  oldValues   Json?
+  newValues   Json?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  actor User? @relation(
+    "AuditActors",
+    fields: [actorUserId],
+    references: [id],
+    onDelete: SetNull
+  )
+
+  @@index([actorUserId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+
+  @@map("audit_logs")
 }
