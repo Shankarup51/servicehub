@@ -71,3 +71,7 @@ pids/
 
 # Prisma Notes:
 # Do NOT ignore contract.json, contract.d.ts, or migrations/ - they must be tracked.
+.agents/
+.claude/
+.cursor/
+.devin/
