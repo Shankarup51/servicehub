@@ -19,11 +19,11 @@ export class UsersService {
 
   async create(createUserDto: CreateUserDto) {
     return db.orm.public.User.create({
-      email: createUserDto.email,
+      email: createUserDto.email as any,
       passwordHash: createUserDto.passwordHash,
-      firstName: createUserDto.firstName,
-      lastName: createUserDto.lastName ?? null,
-      phone: createUserDto.phone ?? null,
+      firstName: createUserDto.firstName as any,
+      lastName: (createUserDto.lastName ?? null) as any,
+      phone: (createUserDto.phone ?? null) as any,
     });
   }
 
@@ -34,12 +34,7 @@ export class UsersService {
       return user;
     }
 
-    const data: {
-      firstName?: string;
-      lastName?: string | null;
-      phone?: string | null;
-      email?: string;
-    } = {};
+    const data: Record<string, any> = {};
 
     if (updateUserDto.firstName !== undefined) data.firstName = updateUserDto.firstName;
     if (updateUserDto.lastName !== undefined) data.lastName = updateUserDto.lastName;
@@ -50,6 +45,6 @@ export class UsersService {
       return user;
     }
 
-    return db.orm.public.User.where({ id }).update(data);
+    return db.orm.public.User.where({ id }).update(data as any);
   }
 }
