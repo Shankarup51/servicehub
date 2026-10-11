@@ -4,14 +4,28 @@ import {
   Get,
   Param,
   ParseIntPipe,
+   Req,
   Patch,
   Post,
 } from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+
+interface AuthenticatedRequest extends Request {
+  user: {
+    userId: number;
+    email: string;
+  };
+}
 
 @Controller('users')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -37,4 +51,11 @@ export class UsersController {
   ) {
     return this.usersService.update(id, updateUserDto);
   }
+  @Get('profile')
+  @ApiOperation({
+  summary: 'Get the authenticated user profile',
+})
+getProfile(@Req() req: AuthenticatedRequest) {
+  return this.usersService.findOne(req.user.userId);
+}
 }

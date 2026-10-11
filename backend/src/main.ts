@@ -11,6 +11,7 @@ async function bootstrap() {
     .setTitle('ServiceHub API')
     .setDescription('ServiceHub API documentation')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

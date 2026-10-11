@@ -1,8 +1,10 @@
 import {
-  BadRequestException,
+   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 
 import { randomBytes, createHash } from 'node:crypto';
@@ -13,9 +15,14 @@ import { db } from '../prisma/db.js';
 
 import { RegisterDto } from './dto/register.dto.js';
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
+import { LoginDto } from './dto/login.dto.js';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
+  constructor(
+    private readonly jwtService: JwtService,
+  ) { }
   /**
    * Register a new user.
    */
@@ -210,5 +217,62 @@ export class AuthService {
     return createHash('sha256')
       .update(token)
       .digest('hex');
+  }
+  async login(loginDto: LoginDto) {
+    const email = loginDto.email.trim().toLowerCase();
+
+    const user = await db.orm.public.User.where({
+      email:email as any,
+    }).first();
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'Invalid email or password',
+      );
+    }
+
+    const passwordValid = await argon2.verify(
+      user.passwordHash,
+      loginDto.password,
+    );
+
+    if (!passwordValid) {
+      throw new UnauthorizedException(
+        'Invalid email or password',
+      );
+    }
+
+    if (!user.emailVerified) {
+      throw new ForbiddenException(
+        'Please verify your email before logging in',
+      );
+    }
+
+    if (user.status === 'SUSPENDED') {
+      throw new ForbiddenException(
+        'Your account has been suspended',
+      );
+    }
+
+    const accessToken = await this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+    });
+
+    return {
+      message: 'Login successful',
+      accessToken,
+      tokenType: 'Bearer',
+      expiresIn: 900,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        emailVerified: user.emailVerified,
+        status: user.status,
+      },
+    };
   }
 }
