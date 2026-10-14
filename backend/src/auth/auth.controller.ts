@@ -13,6 +13,8 @@ import { AuthService } from './auth.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { RefreshTokenDto } from './dto/refresh-token.dto.js';
+
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -75,4 +77,31 @@ export class AuthController {
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
-}
+
+  @Post('refresh')
+  @ApiOperation({
+    summary: 'Refresh access and refresh tokens',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Tokens refreshed successfully',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid, expired, revoked, or reused refresh token',
+  })
+  refresh(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.refresh(refreshTokenDto);
+  }
+  @Post('logout')
+  @ApiOperation({
+    summary: 'Log out user',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Logged out successfully',
+  })
+  logout(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.logout(refreshTokenDto);
+  }
+}

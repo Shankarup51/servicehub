@@ -1,5 +1,5 @@
 import {
-   BadRequestException,
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -16,6 +16,7 @@ import { db } from '../prisma/db.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { VerifyEmailDto } from './dto/verify-email.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
@@ -222,7 +223,7 @@ export class AuthService {
     const email = loginDto.email.trim().toLowerCase();
 
     const user = await db.orm.public.User.where({
-      email:email as any,
+      email: email as any,
     }).first();
 
     if (!user) {
@@ -259,11 +260,22 @@ export class AuthService {
       email: user.email,
     });
 
+    const refreshToken = this.generateVerificationToken();
+    const tokenHash = this.hashToken(refreshToken);
+    const expiresAt = Temporal.Now.instant().add({ hours: 168 });
+    await db.orm.public.RefreshToken.create({
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+    });
+
     return {
       message: 'Login successful',
       accessToken,
+      refreshToken,
       tokenType: 'Bearer',
       expiresIn: 900,
+      refreshTokenExpiresAt: expiresAt,
       user: {
         id: user.id,
         email: user.email,
@@ -275,4 +287,117 @@ export class AuthService {
       },
     };
   }
+  async refresh(refreshTokenDto: RefreshTokenDto) {
+    const oldTokenHash = this.hashToken(
+      refreshTokenDto.refreshToken,
+    );
+
+    const now = Temporal.Now.instant();
+
+    const result = await db.transaction(async (tx) => {
+      const oldToken = await tx.orm.public.RefreshToken
+        .where({
+          tokenHash: oldTokenHash,
+        })
+        .first();
+
+      if (
+        !oldToken ||
+        oldToken.revokedAt ||
+        Temporal.Instant.compare(oldToken.expiresAt, now) <= 0
+      ) {
+        throw new UnauthorizedException(
+          'Invalid or expired refresh token',
+        );
+      }
+
+      const user = await tx.orm.public.User
+        .where({
+          id: oldToken.userId,
+        })
+        .first();
+
+      if (
+        !user ||
+        !user.emailVerified ||
+        user.status === 'SUSPENDED'
+      ) {
+        throw new UnauthorizedException(
+          'Refresh token is no longer valid',
+        );
+      }
+
+      // Revoke the existing token before creating its replacement.
+      // The conditional update prevents a token already revoked
+      // by another request from being rotated again.
+      const revokedToken = await tx.orm.public.RefreshToken
+        .where({
+          id: oldToken.id,
+          revokedAt: null,
+        })
+        .update({
+          revokedAt: now,
+        });
+
+      if (!revokedToken) {
+        throw new UnauthorizedException(
+          'Refresh token has already been used',
+        );
+      }
+
+      const newRefreshToken = this.generateVerificationToken();
+      const newTokenHash = this.hashToken(newRefreshToken);
+
+      const newExpiresAt = now.add({ hours: 168 });
+
+      await tx.orm.public.RefreshToken.create({
+        userId: user.id,
+        tokenHash: newTokenHash,
+        expiresAt: newExpiresAt,
+      });
+
+      const accessToken = await this.jwtService.signAsync({
+        sub: user.id,
+        email: user.email,
+      });
+
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+        refreshTokenExpiresAt: newExpiresAt,
+      };
+    });
+
+    return {
+      message: 'Token refreshed successfully',
+      ...result,
+      tokenType: 'Bearer',
+      expiresIn: 900,
+    };
+  }
+  
+async logout(refreshTokenDto: RefreshTokenDto) {
+  const tokenHash = this.hashToken(
+    refreshTokenDto.refreshToken,
+  );
+
+  const refreshToken = await db.orm.public.RefreshToken
+    .where({ tokenHash })
+    .first();
+
+  // Make logout idempotent: an unknown or already-revoked
+  // token does not prevent the client from logging out.
+  if (refreshToken && !refreshToken.revokedAt) {
+    const revokedAt = Temporal.Now.instant()
+
+    await db.orm.public.RefreshToken
+      .where({ id: refreshToken.id })
+      .update({ revokedAt });
+  }
+
+  return {
+    message: 'Logout successful',
+  };
 }
+
+  }
