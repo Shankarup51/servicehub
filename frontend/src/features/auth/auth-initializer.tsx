@@ -16,11 +16,13 @@ function AuthInitializerContent() {
     skip: !accessToken || !!user,
   });
 
-  // Check localStorage on mount if Redux in-memory state is empty
+  // Check sessionStorage or localStorage on mount if Redux in-memory state is empty
   useEffect(() => {
     if (!accessToken) {
       try {
-        const raw = localStorage.getItem("servicehub_auth");
+        const raw =
+          sessionStorage.getItem("servicehub_auth") ||
+          localStorage.getItem("servicehub_auth");
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed?.accessToken && parsed?.user) {

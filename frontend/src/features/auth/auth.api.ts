@@ -35,13 +35,13 @@ export const authApi = baseApi.injectEndpoints({
         }),
 
         login: builder.mutation<LoginResponse, LoginRequest>({
-            query: (body) => ({
+            query: ({ email, password }) => ({
                 url: API_ENDPOINTS.auth.login,
                 method: "POST",
-                body,
+                body: { email, password },
             }),
 
-            async onQueryStarted(_, { dispatch, queryFulfilled }) {
+            async onQueryStarted(args, { dispatch, queryFulfilled }) {
                 try {
                     const { data } = await queryFulfilled;
 
@@ -49,6 +49,7 @@ export const authApi = baseApi.injectEndpoints({
                         setCredentials({
                             user: data.user,
                             accessToken: data.accessToken,
+                            rememberMe: args.rememberMe,
                         }),
                     );
                 } catch {

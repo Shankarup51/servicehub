@@ -20,7 +20,7 @@ export const Checkbox = React.forwardRef<
   const checkboxId = id || generatedId
 
   return (
-    <div className="flex items-start gap-2.5">
+    <div className={cn("flex gap-2.5", description ? "items-start" : "items-center")}>
       <RadixCheckbox.Root
         ref={ref}
         id={checkboxId}
@@ -28,7 +28,7 @@ export const Checkbox = React.forwardRef<
         checked={checked}
         aria-invalid={!!error}
         className={cn(
-          "peer relative size-4.5 shrink-0 rounded border border-input bg-card shadow-xs transition-all duration-150 outline-none",
+          "peer relative size-4.5 shrink-0 rounded border border-input bg-card shadow-xs transition-all duration-150 outline-none cursor-pointer",
           "focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary",
           "disabled:cursor-not-allowed disabled:bg-muted/40 disabled:border-border disabled:opacity-50",
           "data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground",
@@ -48,7 +48,7 @@ export const Checkbox = React.forwardRef<
       </RadixCheckbox.Root>
 
       {(label || description) && (
-        <div className="flex flex-col select-none leading-none pt-0.5">
+        <div className={cn("flex flex-col select-none leading-none", description && "pt-0.5")}>
           {label && (
             <label
               htmlFor={checkboxId}

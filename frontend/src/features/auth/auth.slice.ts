@@ -27,6 +27,7 @@ const authSlice = createSlice({
             action: PayloadAction<{
                 user: AuthUser;
                 accessToken: string;
+                rememberMe?: boolean;
             }>,
         ) => {
             state.user = action.payload.user;
@@ -36,13 +37,19 @@ const authSlice = createSlice({
             if (typeof window !== "undefined") {
                 try {
                     localStorage.removeItem("servicehub_logged_in");
-                    localStorage.setItem(
-                        AUTH_STORAGE_KEY,
-                        JSON.stringify({
-                            user: action.payload.user,
-                            accessToken: action.payload.accessToken,
-                        })
-                    );
+                    const serialized = JSON.stringify({
+                        user: action.payload.user,
+                        accessToken: action.payload.accessToken,
+                    });
+                    const shouldRemember = action.payload.rememberMe ?? true;
+
+                    if (shouldRemember) {
+                        localStorage.setItem(AUTH_STORAGE_KEY, serialized);
+                        sessionStorage.removeItem(AUTH_STORAGE_KEY);
+                    } else {
+                        sessionStorage.setItem(AUTH_STORAGE_KEY, serialized);
+                        localStorage.removeItem(AUTH_STORAGE_KEY);
+                    }
                 } catch {
                     // Ignore storage quota/security errors
                 }
@@ -54,15 +61,24 @@ const authSlice = createSlice({
             state.isAuthenticated = true;
             if (typeof window !== "undefined") {
                 try {
-                    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-                    const current = raw ? JSON.parse(raw) : {};
-                    localStorage.setItem(
-                        AUTH_STORAGE_KEY,
-                        JSON.stringify({
-                            ...current,
-                            accessToken: action.payload,
-                        })
-                    );
+                    const localRaw = localStorage.getItem(AUTH_STORAGE_KEY);
+                    const sessionRaw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+                    const current = localRaw
+                        ? JSON.parse(localRaw)
+                        : sessionRaw
+                          ? JSON.parse(sessionRaw)
+                          : {};
+
+                    const updated = JSON.stringify({
+                        ...current,
+                        accessToken: action.payload,
+                    });
+
+                    if (localRaw) {
+                        localStorage.setItem(AUTH_STORAGE_KEY, updated);
+                    } else if (sessionRaw) {
+                        sessionStorage.setItem(AUTH_STORAGE_KEY, updated);
+                    }
                 } catch {
                     // Ignore storage quota/security errors
                 }
@@ -77,6 +93,7 @@ const authSlice = createSlice({
             if (typeof window !== "undefined") {
                 try {
                     localStorage.removeItem(AUTH_STORAGE_KEY);
+                    sessionStorage.removeItem(AUTH_STORAGE_KEY);
                     localStorage.removeItem("servicehub_logged_in");
                 } catch {
                     // Ignore storage quota/security errors

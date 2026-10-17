@@ -12,7 +12,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { FormField } from "@/components/forms/form-field"
 import { Card } from "@/components/data-display/base-card"
 import { useLoginMutation } from "@/features/auth/auth.api"
-import { showSuccessToast, showErrorToast } from "@/shared/ui/toast-service"
+
+
+const REMEMBER_EMAIL_KEY = "servicehub_remember_email"
+const REMEMBER_DEVICE_KEY = "servicehub_remember_device"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -26,11 +29,43 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = React.useState(true)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 
+  // Restore remembered email and preference on initial mount
+  React.useEffect(() => {
+    try {
+      const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY)
+      const savedPreference = localStorage.getItem(REMEMBER_DEVICE_KEY)
+
+      if (savedEmail) {
+        setEmail(savedEmail)
+        setRememberMe(true)
+      } else if (savedPreference !== null) {
+        setRememberMe(savedPreference === "true")
+      }
+    } catch {
+      // Storage access error ignored
+    }
+  }, [])
+
+  const handleRememberMeChange = (checked: boolean) => {
+    setRememberMe(checked)
+    try {
+      localStorage.setItem(REMEMBER_DEVICE_KEY, checked ? "true" : "false")
+      if (!checked) {
+        localStorage.removeItem(REMEMBER_EMAIL_KEY)
+      } else if (email.trim()) {
+        localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim().toLowerCase())
+      }
+    } catch {
+      // Storage access error ignored
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMessage(null)
 
-    if (!email.trim()) {
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail) {
       setErrorMessage("Please enter your email address.")
       return
     }
@@ -40,18 +75,30 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await login({
-        email: email.trim().toLowerCase(),
+      await login({
+        email: cleanEmail,
         password,
+        rememberMe,
       }).unwrap()
 
-      showSuccessToast(`Welcome back, ${response.user?.firstName || "User"}!`, {
-        description: "Redirecting to your dashboard...",
-      })
+      // Persist or remove remembered email based on user's choice
+      try {
+        if (rememberMe) {
+          localStorage.setItem(REMEMBER_EMAIL_KEY, cleanEmail)
+          localStorage.setItem(REMEMBER_DEVICE_KEY, "true")
+        } else {
+          localStorage.removeItem(REMEMBER_EMAIL_KEY)
+          localStorage.setItem(REMEMBER_DEVICE_KEY, "false")
+        }
+      } catch {
+        // Storage access error ignored
+      }
 
-      // Clear form inputs upon successful submission
-      setEmail("")
+      // Clear password and any errors; retain email if rememberMe is enabled
       setPassword("")
+      if (!rememberMe) {
+        setEmail("")
+      }
       setErrorMessage(null)
 
       // Navigate to destination
@@ -64,7 +111,6 @@ export default function LoginPage() {
           : error.data?.message || "Invalid email or password. Please try again."
 
       setErrorMessage(msg)
-      
     }
   }
 
@@ -167,7 +213,7 @@ export default function LoginPage() {
             <Checkbox
               id="remember-me"
               checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(!!checked)}
+              onCheckedChange={(checked) => handleRememberMeChange(Boolean(checked))}
               label="Remember this device"
               disabled={isLoading}
             />
