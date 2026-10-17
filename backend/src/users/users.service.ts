@@ -47,4 +47,17 @@ export class UsersService {
 
     return db.orm.public.User.where({ id }).update(data as any);
   }
+   async findProfile(id: number) {
+  const user = await this.findOne(id);
+
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    emailVerified: user.emailVerified,
+    status: user.status,
+  };
+}
 }

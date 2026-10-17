@@ -51,11 +51,9 @@ export class UsersController {
   ) {
     return this.usersService.update(id, updateUserDto);
   }
-  @Get('profile')
-  @ApiOperation({
-  summary: 'Get the authenticated user profile',
-})
+ @Get('profile')
+@ApiOperation({ summary: 'Get the authenticated user profile' })
 getProfile(@Req() req: AuthenticatedRequest) {
-  return this.usersService.findOne(req.user.userId);
+  return this.usersService.findProfile(req.user.userId);
 }
 }

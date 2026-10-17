@@ -1,13 +1,19 @@
+
 # ==========================================
 # ServiceHub - Root .gitignore (Full-Stack)
 # ==========================================
 
-# Dependencies (covers backend, frontend & monorepo packages)
+# Dependencies
 node_modules/
 .pnp
-.pnp.js
+.pnp.*
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/versions/
 
-# Build & Compilation Outputs
+# Build and compilation outputs
 dist/
 build/
 out/
@@ -17,7 +23,7 @@ out/
 .output/
 *.tsbuildinfo
 
-# Environment Variables & Secrets (never commit sensitive credentials)
+# Environment variables and secrets
 .env
 .env.*
 .env.local
@@ -25,8 +31,9 @@ out/
 .env.test.local
 .env.production.local
 !.env.example
+!.env.*.example
 
-# Logs & Debuggers
+# Logs and debugging
 logs/
 *.log
 npm-debug.log*
@@ -35,11 +42,11 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Testing & Code Coverage
+# Testing and coverage
 coverage/
 .nyc_output/
 
-# IDEs & Editor Configuration
+# IDEs and editors
 .idea/
 .vscode/*
 !.vscode/settings.json
@@ -51,7 +58,7 @@ coverage/
 *.swp
 *.swo
 
-# Operating System Files
+# Operating system files
 .DS_Store
 .DS_Store?
 ._*
@@ -61,7 +68,7 @@ ehthumbs.db
 Thumbs.db
 Desktop.ini
 
-# Temporary & Runtime Files
+# Temporary and runtime files
 .temp/
 .tmp/
 pids/
@@ -69,8 +76,17 @@ pids/
 *.seed
 *.pid.lock
 
-# Prisma Notes:
-# Do NOT ignore contract.json, contract.d.ts, or migrations/ - they must be tracked.
+# Next.js generated files
+next-env.d.ts
+
+# Deployment platforms
+.vercel/
+
+# Prisma
+# Keep contract files and migrations tracked.
+# Do not ignore contract.json, contract.d.ts, or migrations/.
+
+# Local AI/editor tooling
 .agents/
 .claude/
 .cursor/
