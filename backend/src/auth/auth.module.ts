@@ -6,6 +6,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
+import { EmailModule } from '../email/email.module.js';
 
 import type { StringValue } from 'ms';
 
@@ -21,6 +22,7 @@ if (!jwtSecret || Buffer.byteLength(jwtSecret, 'utf8') < 32) {
 @Module({
   imports: [
     PassportModule,
+    EmailModule,
     JwtModule.register({
       global: true,
       secret: jwtSecret,

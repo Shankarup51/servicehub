@@ -18,11 +18,12 @@ import { VerifyEmailDto } from './dto/verify-email.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 import { JwtService } from '@nestjs/jwt';
-
+import { EmailService } from '../email/email.service.js';
 @Injectable()
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
+      private readonly emailService: EmailService,
   ) { }
   /**
    * Register a new user.
@@ -93,6 +94,12 @@ export class AuthService {
         tokenHash,
         expiresAt,
       });
+
+      await this.emailService.sendVerificationEmail(
+        email,
+        registerDto.firstName,
+        verificationToken,
+      );
 
       return createdUser;
     });
