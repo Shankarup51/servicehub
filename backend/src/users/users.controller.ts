@@ -4,7 +4,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
-   Req,
+  Req,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -15,6 +15,8 @@ import { UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { PermissionsGuard } from '../auth/guards/permissions.guard.js';
+import { Permissions } from '../auth/decorators/permissions.decorator.js';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -30,8 +32,16 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
+  @UseGuards(PermissionsGuard)
+  @Permissions('users:read')
   async findAll() {
     return this.usersService.findAll();
+  }
+
+  @Get('profile')
+  @ApiOperation({ summary: 'Get the authenticated user profile' })
+  getProfile(@Req() req: AuthenticatedRequest) {
+    return this.usersService.findProfile(req.user.userId);
   }
 
   @Get(':id')
@@ -51,9 +61,4 @@ export class UsersController {
   ) {
     return this.usersService.update(id, updateUserDto);
   }
- @Get('profile')
-@ApiOperation({ summary: 'Get the authenticated user profile' })
-getProfile(@Req() req: AuthenticatedRequest) {
-  return this.usersService.findProfile(req.user.userId);
-}
 }

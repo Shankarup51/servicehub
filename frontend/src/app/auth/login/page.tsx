@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
-import { Mail, Lock, ArrowRight, AlertCircle, Sparkles, User, Shield } from "lucide-react"
+import { Mail, Lock, ArrowRight, AlertCircle, Sparkles, User, Shield, Briefcase } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { WebText } from "@/components/ui/web-text"
@@ -17,7 +17,51 @@ import { useLoginMutation } from "@/features/auth/auth.api"
 const REMEMBER_EMAIL_KEY = "servicehub_remember_email"
 const REMEMBER_DEVICE_KEY = "servicehub_remember_device"
 
-export default function LoginPage() {
+/**
+ * Resolves the primary dashboard route based on user's assigned roles.
+ *
+ * Precedence rule for multi-role accounts:
+ * 1. ADMIN (Highest administrative and operational authority) -> /admin
+ * 2. SERVICE_PROVIDER (Provider services & booking fulfillment workflows) -> /dashboard/provider
+ * 3. CUSTOMER (Marketplace consumer & service discovery workflows) -> /dashboard/customer
+ *
+ * If the user has no recognized roles or is missing roles:
+ * Returns null to prevent unauthorized privilege escalation.
+ */
+export function getRoleDashboardRoute(
+  roles?: string[] | null,
+  singleRole?: string | null
+): string | null {
+  const normalizedRoles = new Set<string>()
+
+  if (Array.isArray(roles)) {
+    roles.forEach((r) => {
+      if (typeof r === "string" && r.trim()) {
+        normalizedRoles.add(r.trim().toUpperCase())
+      }
+    })
+  }
+
+  if (typeof singleRole === "string" && singleRole.trim()) {
+    normalizedRoles.add(singleRole.trim().toUpperCase())
+  }
+
+  if (normalizedRoles.has("ADMIN")) {
+    return "/admin"
+  }
+
+  if (normalizedRoles.has("SERVICE_PROVIDER")) {
+    return "/dashboard/provider"
+  }
+
+  if (normalizedRoles.has("CUSTOMER")) {
+    return "/dashboard/customer"
+  }
+
+  return null
+}
+
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get("redirect") || "/dashboard"
@@ -36,10 +80,14 @@ export default function LoginPage() {
       const savedPreference = localStorage.getItem(REMEMBER_DEVICE_KEY)
 
       if (savedEmail) {
-        setEmail(savedEmail)
-        setRememberMe(true)
+        setTimeout(() => {
+          setEmail(savedEmail)
+          setRememberMe(true)
+        }, 0)
       } else if (savedPreference !== null) {
-        setRememberMe(savedPreference === "true")
+        setTimeout(() => {
+          setRememberMe(savedPreference === "true")
+        }, 0)
       }
     } catch {
       // Storage access error ignored
@@ -75,7 +123,7 @@ export default function LoginPage() {
     }
 
     try {
-      await login({
+      const loginResult = await login({
         email: cleanEmail,
         password,
         rememberMe,
@@ -101,8 +149,31 @@ export default function LoginPage() {
       }
       setErrorMessage(null)
 
-      // Navigate to destination
-      router.replace(redirectPath)
+      // Resolve role-based destination with explicit precedence
+      const roleRoute = getRoleDashboardRoute(
+        loginResult.user.roles,
+        loginResult.user.role
+      )
+
+      // If user has NO role, they cannot access anything on ServiceHub
+      if (!roleRoute) {
+        router.replace("/unauthorized")
+        return
+      }
+
+      // If a specific deep link was requested (e.g. /services, /bookings), honor it;
+      // otherwise, navigate to the assigned role dashboard.
+      const isGenericRedirect =
+        !redirectPath ||
+        redirectPath === "/" ||
+        redirectPath === "/dashboard" ||
+        redirectPath.startsWith("/auth")
+
+      if (!isGenericRedirect) {
+        router.replace(redirectPath)
+      } else {
+        router.replace(roleRoute)
+      }
     } catch (err: unknown) {
       const error = err as { data?: { message?: string | string[] } }
       const msg =
@@ -163,8 +234,16 @@ export default function LoginPage() {
               onClick={() => fillDemoCredentials("provider@servicehub.com", "Password123!")}
               className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-card border border-border hover:border-primary/50 text-foreground transition-all duration-150 hover:shadow-xs active:scale-98 cursor-pointer"
             >
-              <Shield className="size-3.5 text-primary" />
+              <Briefcase className="size-3.5 text-primary" />
               <span>Provider Account</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => fillDemoCredentials("admin@servicehub.com", "Password123!")}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg bg-card border border-border hover:border-primary/50 text-foreground transition-all duration-150 hover:shadow-xs active:scale-98 cursor-pointer"
+            >
+              <Shield className="size-3.5 text-primary" />
+              <span>Admin Account</span>
             </button>
           </div>
         </div>
@@ -253,5 +332,19 @@ export default function LoginPage() {
         </div>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="w-full p-8 text-center text-xs text-muted-foreground">
+          Loading sign in portal...
+        </div>
+      }
+    >
+      <LoginForm />
+    </React.Suspense>
   )
 }

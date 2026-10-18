@@ -5,18 +5,6 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-maroon-50: #FDF2F4;
-  --color-maroon-100: #FCEEEF;
-  --color-maroon-200: #F7D1D6;
-  --color-maroon-300: #F0A8B2;
-  --color-maroon-400: #E26D7F;
-  --color-maroon-500: #C93B52;
-  --color-maroon-600: #9C1E32;
-  --color-maroon-700: #841627;
-  --color-maroon-800: #6F1523;
-  --color-maroon-900: #5D1521;
-  --color-maroon-950: #35080E;
-
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-rajdhani), 'Rajdhani', sans-serif;
@@ -45,6 +33,10 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-rating: var(--rating);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -70,104 +62,116 @@
   --font-sans: var(--font-rajdhani), "Rajdhani", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-heading: var(--font-rajdhani), "Rajdhani", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* Core Authoritative Theme Colors */
-  --background: #FCEEEF;
-  --foreground: #1A1D20;
+  /* Target Handypal Clean Full-Width Theme */
+  --app-background: #FFFFFF;
+  --background: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-secondary: #F5F5F5;
+  --foreground: #242424;
 
   --card: #FFFFFF;
-  --card-foreground: #1A1D20;
+  --card-foreground: #242424;
 
   --popover: #FFFFFF;
-  --popover-foreground: #1A1D20;
+  --popover-foreground: #242424;
 
-  --primary: #9C1E32;
+  --primary: #AD8066;
   --primary-foreground: #FFFFFF;
+  --primary-hover: #94684F;
 
-  --secondary: #F7E5EC;
-  --secondary-foreground: #9C1E32;
+  --secondary: #F5F5F5;
+  --secondary-foreground: #242424;
 
-  --muted: #F7E5EC;
-  --muted-foreground: #7C838A;
+  --muted: #F5F5F5;
+  --muted-foreground: #6B6B6B;
 
-  --accent: #FCEEEF;
-  --accent-foreground: #9C1E32;
+  --accent: #F5F5F5;
+  --accent-foreground: #AD8066;
 
-  --border: #F0D5D8;
-  --input: #E8CBCE;
-  --ring: #9C1E32;
+  --border: #E5E5E5;
+  --input: #E5E5E5;
+  --ring: #AD8066;
 
-  /* Semantic Status and Notification Colors */
-  --success: #D3F6E7;
-  --success-foreground: #1FA86A;
+  /* Semantic Status and Rating Tokens */
+  --rating: #F5A623;
 
-  --warning: #FEEFD4;
-  --warning-foreground: #C47414;
+  --success: #23865B;
+  --success-foreground: #FFFFFF;
 
-  --processing: #F7E5EC;
-  --processing-foreground: #9E4369;
+  --warning: #B7791F;
+  --warning-foreground: #FFFFFF;
 
-  --destructive: #FDE8E8;
-  --destructive-foreground: #D92D20;
+  --processing: #8C6A53;
+  --processing-foreground: #FFFFFF;
 
-  --radius: 0.75rem;
+  --destructive: #C74747;
+  --destructive-foreground: #FFFFFF;
+
+  --radius: 0.5rem;
 
   /* Sidebar Tokens */
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #1A1D20;
-  --sidebar-primary: #9C1E32;
+  --sidebar-foreground: #242424;
+  --sidebar-primary: #AD8066;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #FCEEEF;
-  --sidebar-accent-foreground: #9C1E32;
-  --sidebar-border: #F0D5D8;
-  --sidebar-ring: #9C1E32;
+  --sidebar-accent: #F5F5F5;
+  --sidebar-accent-foreground: #AD8066;
+  --sidebar-border: #E5E5E5;
+  --sidebar-ring: #AD8066;
 }
 
 .dark {
-  --background: #14080A;
-  --foreground: #F8F9FA;
+  --app-background: #1C1A19;
+  --background: #1C1A19;
+  --surface: #262322;
+  --surface-secondary: #302C2A;
+  --foreground: #F5F3F0;
 
-  --card: #1E1214;
-  --card-foreground: #F8F9FA;
+  --card: #262322;
+  --card-foreground: #F5F3F0;
 
-  --popover: #1E1214;
-  --popover-foreground: #F8F9FA;
+  --popover: #262322;
+  --popover-foreground: #F5F3F0;
 
-  --primary: #E26D7F;
-  --primary-foreground: #14080A;
+  --primary: #C59A80;
+  --primary-foreground: #1C1A19;
+  --primary-hover: #D7AEA4;
 
-  --secondary: #2A181C;
-  --secondary-foreground: #F8F9FA;
+  --secondary: #302C2A;
+  --secondary-foreground: #F5F3F0;
 
-  --muted: #2A181C;
-  --muted-foreground: #A0989B;
+  --muted: #302C2A;
+  --muted-foreground: #A8A29E;
 
-  --accent: #2A181C;
-  --accent-foreground: #E26D7F;
+  --accent: #302C2A;
+  --accent-foreground: #C59A80;
 
-  --border: #3A2227;
-  --input: #3A2227;
-  --ring: #E26D7F;
+  --border: #3D3835;
+  --input: #3D3835;
+  --ring: #C59A80;
 
-  --success: #113627;
-  --success-foreground: #4ADE80;
+  --rating: #F5A623;
 
-  --warning: #382408;
-  --warning-foreground: #FBBF24;
+  --success: #2EA06F;
+  --success-foreground: #FFFFFF;
 
-  --processing: #341523;
-  --processing-foreground: #F472B6;
+  --warning: #D99538;
+  --warning-foreground: #FFFFFF;
 
-  --destructive: #3D1214;
-  --destructive-foreground: #F87171;
+  --processing: #A68068;
+  --processing-foreground: #FFFFFF;
 
-  --sidebar: #1A0F11;
-  --sidebar-foreground: #F8F9FA;
-  --sidebar-primary: #E26D7F;
-  --sidebar-primary-foreground: #14080A;
-  --sidebar-accent: #2A181C;
-  --sidebar-accent-foreground: #E26D7F;
-  --sidebar-border: #3A2227;
-  --sidebar-ring: #E26D7F;
+  --destructive: #E05C5C;
+  --destructive-foreground: #FFFFFF;
+
+  --sidebar: #262322;
+  --sidebar-foreground: #F5F3F0;
+  --sidebar-primary: #C59A80;
+  --sidebar-primary-foreground: #1C1A19;
+  --sidebar-accent: #302C2A;
+  --sidebar-accent-foreground: #C59A80;
+  --sidebar-border: #3D3835;
+  --sidebar-ring: #C59A80;
 }
 
 @layer base {

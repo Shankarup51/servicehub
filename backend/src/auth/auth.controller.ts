@@ -2,6 +2,8 @@
 import {
   Body,
   Controller,
+  HttpCode,
+  HttpStatus,
   Post,
   Req,
   Res,
@@ -89,6 +91,7 @@ export class AuthController {
 
   // Login
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Log in a user',
     description:
@@ -127,6 +130,7 @@ export class AuthController {
 
   // Refresh access token
   @Post('refresh')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Refresh access token',
     description:
@@ -174,6 +178,7 @@ export class AuthController {
 
   // Logout
   @Post('logout')
+  @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Log out a user',
     description:

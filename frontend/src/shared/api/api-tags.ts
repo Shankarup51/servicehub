@@ -4,4 +4,6 @@ export const API_TAGS = {
   User: "User",
   Service: "Service",
   Booking: "Booking",
+  Navigation: "Navigation",
 } as const;
+

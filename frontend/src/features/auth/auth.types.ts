@@ -18,13 +18,14 @@ export interface LoginRequest {
 }
 
 export interface AuthUser {
-  id: string;
+  id: string | number;
   email: string;
   firstName: string;
   lastName: string | null;
   phone: string;
   emailVerified: boolean;
   status: string;
+  roles?: string[];
   role?: string;
 }
 

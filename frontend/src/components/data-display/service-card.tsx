@@ -1,6 +1,6 @@
 import * as React from "react"
 import Link from "next/link"
-import { Star, Clock, Sparkles } from "lucide-react"
+import { Star, Sparkles } from "lucide-react"
 import { Card } from "./base-card"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -32,7 +32,6 @@ export function ServiceCard({
   rating = 4.9,
   reviewCount = 28,
   providerName = "Verified Pro",
-  durationMinutes = 60,
   imageUrl,
   href = `/services/${id}`,
   onBook,
@@ -65,17 +64,7 @@ export function ServiceCard({
       </div>
 
       {/* Card Content */}
-      <div className="flex flex-col flex-1 p-5 space-y-3">
-        {/* Rating & Pro */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">{providerName}</span>
-          <div className="flex items-center gap-1 text-amber-500 font-semibold">
-            <Star className="size-3.5 fill-amber-400 stroke-amber-500" />
-            <span>{rating.toFixed(1)}</span>
-            <span className="text-muted-foreground font-normal">({reviewCount})</span>
-          </div>
-        </div>
-
+      <div className="flex flex-col flex-1 p-4 sm:p-5 space-y-2.5">
         {/* Title */}
         <Link href={href} className="focus:outline-none">
           <h4 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
@@ -83,42 +72,46 @@ export function ServiceCard({
           </h4>
         </Link>
 
-        {/* Description */}
+        {/* Rating & Pro / Category info */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1 text-[#F5A623] font-semibold">
+            <Star className="size-3.5 fill-[#F5A623] stroke-[#F5A623]" />
+            <span className="text-foreground">{rating.toFixed(1)}</span>
+            <span className="text-muted-foreground font-normal">({reviewCount} reviews)</span>
+          </div>
+          {providerName && (
+            <>
+              <span className="text-border">•</span>
+              <span className="truncate max-w-[120px]">{providerName}</span>
+            </>
+          )}
+        </div>
+
+        {/* Description (if provided) */}
         {description && (
           <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
             {description}
           </p>
         )}
 
-        {/* Meta: Duration */}
-        {durationMinutes && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
-            <Clock className="size-3.5" />
-            <span>Approx. {durationMinutes} mins</span>
-          </div>
-        )}
-
-        {/* Price & CTA */}
-        <div className="mt-auto pt-4 border-t border-border flex items-center justify-between">
+        {/* Price & CTA Button */}
+        <div className="mt-auto pt-3 border-t border-border flex items-center justify-between">
           <div>
-            <span className="text-xs text-muted-foreground block">
-              {priceType === "HOURLY" ? "Rate" : "Starting at"}
-            </span>
-            <span className="text-lg font-bold text-foreground">
-              ${price}
-              {priceType === "HOURLY" && (
-                <span className="text-xs font-normal text-muted-foreground">/hr</span>
-              )}
+            <span className="text-base sm:text-lg font-bold text-foreground">
+              ${price.toFixed(0)}
+              {priceType === "HOURLY" ? (
+                <span className="text-xs font-normal text-muted-foreground ml-1">/hr</span>
+              ) : null}
             </span>
           </div>
 
           {onBook ? (
-            <Button size="sm" variant="primary" onClick={onBook}>
-              Book Now
+            <Button size="sm" variant="primary" onClick={onBook} className="rounded-md px-3.5 py-1 text-xs font-medium">
+              View details
             </Button>
           ) : (
-            <Button size="sm" variant="primary" asChild>
-              <Link href={href}>View Details</Link>
+            <Button size="sm" variant="primary" asChild className="rounded-md px-3.5 py-1 text-xs font-medium">
+              <Link href={href}>View details</Link>
             </Button>
           )}
         </div>

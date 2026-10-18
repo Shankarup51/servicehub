@@ -47,17 +47,27 @@ export class UsersService {
 
     return db.orm.public.User.where({ id }).update(data as any);
   }
-   async findProfile(id: number) {
-  const user = await this.findOne(id);
+  async findProfile(id: number) {
+    const user = await this.findOne(id);
 
-  return {
-    id: user.id,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    phone: user.phone,
-    emailVerified: user.emailVerified,
-    status: user.status,
-  };
-}
+    const userRoles = await db.orm.public.UserRole.where({
+      userId: user.id,
+    })
+      .include('role')
+      .all();
+
+    const roles = userRoles.map((ur) => ur.role.name);
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      emailVerified: user.emailVerified,
+      status: user.status,
+      roles,
+      role: roles[0] ?? null,
+    };
+  }
 }

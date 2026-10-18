@@ -24,4 +24,8 @@ export const API_ENDPOINTS = {
     detail: (id: number | string) => `/bookings/${id}`,
     create: "/bookings",
   },
+
+  navigation: {
+    menu: "/navigation/menu",
+  },
 } as const;

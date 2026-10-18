@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -23,43 +24,35 @@ import { EmailService } from '../email/email.service.js';
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
-      private readonly emailService: EmailService,
-  ) { }
+    private readonly emailService: EmailService,
+  ) {}
   /**
    * Register a new user.
    */
   async register(registerDto: RegisterDto) {
     const email = registerDto.email.trim().toLowerCase();
 
-    const existingUserByEmail =
-      await db.orm.public.User.where({
-        email: email as any,
-      }).first();
+    const existingUserByEmail = await db.orm.public.User.where({
+      email: email as any,
+    }).first();
 
     if (existingUserByEmail) {
-      throw new ConflictException(
-        'Email is already registered',
-      );
+      throw new ConflictException('Email is already registered');
     }
 
     if (registerDto.phone) {
       const phone = registerDto.phone.trim();
 
-      const existingUserByPhone =
-        await db.orm.public.User.where({
-          phone: phone as any,
-        }).first();
+      const existingUserByPhone = await db.orm.public.User.where({
+        phone: phone as any,
+      }).first();
 
       if (existingUserByPhone) {
-        throw new ConflictException(
-          'Phone number is already registered',
-        );
+        throw new ConflictException('Phone number is already registered');
       }
     }
 
-    const passwordHash = await argon2.hash(
-      registerDto.password,
-    );
+    const passwordHash = await argon2.hash(registerDto.password);
 
     /*
      * Generate email verification token.
@@ -70,11 +63,9 @@ export class AuthService {
      * Hashed token:
      *   Stored in database
      */
-    const verificationToken =
-      this.generateVerificationToken();
+    const verificationToken = this.generateVerificationToken();
 
-    const tokenHash =
-      this.hashToken(verificationToken);
+    const tokenHash = this.hashToken(verificationToken);
 
     const expiresAt = Temporal.Now.instant().add({
       hours: 24,
@@ -87,6 +78,21 @@ export class AuthService {
         firstName: registerDto.firstName.trim() as any,
         lastName: (registerDto.lastName?.trim() ?? null) as any,
         phone: (registerDto.phone?.trim() ?? null) as any,
+      });
+
+      const customerRole = await tx.orm.public.Role.where({
+        name: 'CUSTOMER' as any,
+      }).first();
+
+      if (!customerRole) {
+        throw new InternalServerErrorException(
+          'Default role CUSTOMER not found. Registration aborted.',
+        );
+      }
+
+      await tx.orm.public.UserRole.create({
+        userId: createdUser.id,
+        roleId: customerRole.id,
       });
 
       await tx.orm.public.EmailVerificationToken.create({
@@ -117,8 +123,7 @@ export class AuthService {
     }
 
     return {
-      message:
-        'User registered successfully. Please verify your email.',
+      message: 'User registered successfully. Please verify your email.',
       user: {
         id: user.id,
         email: user.email,
@@ -133,18 +138,12 @@ export class AuthService {
   /**
    * Verify a user's email address.
    */
-  async verifyEmail(
-    verifyEmailDto: VerifyEmailDto,
-  ) {
-    const tokenHash =
-      this.hashToken(verifyEmailDto.token);
+  async verifyEmail(verifyEmailDto: VerifyEmailDto) {
+    const tokenHash = this.hashToken(verifyEmailDto.token);
 
-    const verificationToken =
-      await db.orm.public.EmailVerificationToken
-        .where({
-          tokenHash,
-        })
-        .first();
+    const verificationToken = await db.orm.public.EmailVerificationToken.where({
+      tokenHash,
+    }).first();
 
     if (!verificationToken) {
       throw new BadRequestException(
@@ -164,15 +163,12 @@ export class AuthService {
         Temporal.Now.instant(),
       ) <= 0
     ) {
-      throw new BadRequestException(
-        'Email verification token has expired',
-      );
+      throw new BadRequestException('Email verification token has expired');
     }
 
-    const user =
-      await db.orm.public.User.where({
-        id: verificationToken.userId,
-      }).first();
+    const user = await db.orm.public.User.where({
+      id: verificationToken.userId,
+    }).first();
 
     if (!user) {
       throw new NotFoundException(
@@ -181,9 +177,7 @@ export class AuthService {
     }
 
     if (user.emailVerified) {
-      throw new BadRequestException(
-        'Email is already verified',
-      );
+      throw new BadRequestException('Email is already verified');
     }
 
     await db.transaction(async (tx) => {
@@ -193,13 +187,11 @@ export class AuthService {
         emailVerified: true,
       });
 
-      await tx.orm.public.EmailVerificationToken
-        .where({
-          id: verificationToken.id,
-        })
-        .update({
-          usedAt: Temporal.Now.instant(),
-        });
+      await tx.orm.public.EmailVerificationToken.where({
+        id: verificationToken.id,
+      }).update({
+        usedAt: Temporal.Now.instant(),
+      });
     });
 
     return {
@@ -222,9 +214,7 @@ export class AuthService {
    * The raw token is never stored in the database.
    */
   private hashToken(token: string): string {
-    return createHash('sha256')
-      .update(token)
-      .digest('hex');
+    return createHash('sha256').update(token).digest('hex');
   }
   async login(loginDto: LoginDto) {
     const email = loginDto.email.trim().toLowerCase();
@@ -234,9 +224,7 @@ export class AuthService {
     }).first();
 
     if (!user) {
-      throw new UnauthorizedException(
-        'Invalid email or password',
-      );
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     const passwordValid = await argon2.verify(
@@ -245,9 +233,7 @@ export class AuthService {
     );
 
     if (!passwordValid) {
-      throw new UnauthorizedException(
-        'Invalid email or password',
-      );
+      throw new UnauthorizedException('Invalid email or password');
     }
 
     if (!user.emailVerified) {
@@ -257,9 +243,7 @@ export class AuthService {
     }
 
     if (user.status === 'SUSPENDED') {
-      throw new ForbiddenException(
-        'Your account has been suspended',
-      );
+      throw new ForbiddenException('Your account has been suspended');
     }
 
     const accessToken = await this.jwtService.signAsync({
@@ -276,6 +260,14 @@ export class AuthService {
       expiresAt,
     });
 
+    const userRoles = await db.orm.public.UserRole.where({
+      userId: user.id,
+    })
+      .include('role')
+      .all();
+
+    const roles = userRoles.map((ur) => ur.role.name);
+
     return {
       message: 'Login successful',
       accessToken,
@@ -291,65 +283,49 @@ export class AuthService {
         phone: user.phone,
         emailVerified: user.emailVerified,
         status: user.status,
+        roles,
+        role: roles[0] ?? null,
       },
     };
   }
   async refresh(refreshTokenDto: RefreshTokenDto) {
-    const oldTokenHash = this.hashToken(
-      refreshTokenDto.refreshToken,
-    );
+    const oldTokenHash = this.hashToken(refreshTokenDto.refreshToken);
 
     const now = Temporal.Now.instant();
 
     const result = await db.transaction(async (tx) => {
-      const oldToken = await tx.orm.public.RefreshToken
-        .where({
-          tokenHash: oldTokenHash,
-        })
-        .first();
+      const oldToken = await tx.orm.public.RefreshToken.where({
+        tokenHash: oldTokenHash,
+      }).first();
 
       if (
         !oldToken ||
         oldToken.revokedAt ||
         Temporal.Instant.compare(oldToken.expiresAt, now) <= 0
       ) {
-        throw new UnauthorizedException(
-          'Invalid or expired refresh token',
-        );
+        throw new UnauthorizedException('Invalid or expired refresh token');
       }
 
-      const user = await tx.orm.public.User
-        .where({
-          id: oldToken.userId,
-        })
-        .first();
+      const user = await tx.orm.public.User.where({
+        id: oldToken.userId,
+      }).first();
 
-      if (
-        !user ||
-        !user.emailVerified ||
-        user.status === 'SUSPENDED'
-      ) {
-        throw new UnauthorizedException(
-          'Refresh token is no longer valid',
-        );
+      if (!user || !user.emailVerified || user.status === 'SUSPENDED') {
+        throw new UnauthorizedException('Refresh token is no longer valid');
       }
 
       // Revoke the existing token before creating its replacement.
       // The conditional update prevents a token already revoked
       // by another request from being rotated again.
-      const revokedToken = await tx.orm.public.RefreshToken
-        .where({
-          id: oldToken.id,
-          revokedAt: null,
-        })
-        .update({
-          revokedAt: now,
-        });
+      const revokedToken = await tx.orm.public.RefreshToken.where({
+        id: oldToken.id,
+        revokedAt: null,
+      }).update({
+        revokedAt: now,
+      });
 
       if (!revokedToken) {
-        throw new UnauthorizedException(
-          'Refresh token has already been used',
-        );
+        throw new UnauthorizedException('Refresh token has already been used');
       }
 
       const newRefreshToken = this.generateVerificationToken();
@@ -382,29 +358,26 @@ export class AuthService {
       expiresIn: 900,
     };
   }
-  
-async logout(refreshTokenDto: RefreshTokenDto) {
-  const tokenHash = this.hashToken(
-    refreshTokenDto.refreshToken,
-  );
 
-  const refreshToken = await db.orm.public.RefreshToken
-    .where({ tokenHash })
-    .first();
+  async logout(refreshTokenDto: RefreshTokenDto) {
+    const tokenHash = this.hashToken(refreshTokenDto.refreshToken);
 
-  // Make logout idempotent: an unknown or already-revoked
-  // token does not prevent the client from logging out.
-  if (refreshToken && !refreshToken.revokedAt) {
-    const revokedAt = Temporal.Now.instant()
+    const refreshToken = await db.orm.public.RefreshToken.where({
+      tokenHash,
+    }).first();
 
-    await db.orm.public.RefreshToken
-      .where({ id: refreshToken.id })
-      .update({ revokedAt });
+    // Make logout idempotent: an unknown or already-revoked
+    // token does not prevent the client from logging out.
+    if (refreshToken && !refreshToken.revokedAt) {
+      const revokedAt = Temporal.Now.instant();
+
+      await db.orm.public.RefreshToken.where({ id: refreshToken.id }).update({
+        revokedAt,
+      });
+    }
+
+    return {
+      message: 'Logout successful',
+    };
   }
-
-  return {
-    message: 'Logout successful',
-  };
 }
-
-  }

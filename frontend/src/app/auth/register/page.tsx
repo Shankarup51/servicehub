@@ -23,7 +23,7 @@ import { Card } from "@/components/data-display/base-card"
 import { useRegisterMutation } from "@/features/auth/auth.api"
 import { showSuccessToast, showErrorToast } from "@/shared/ui/toast-service"
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectPath = searchParams.get("redirect") || "/dashboard"
@@ -337,5 +337,19 @@ export default function RegisterPage() {
         </div>
       </Card>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="w-full p-8 text-center text-xs text-muted-foreground">
+          Loading registration portal...
+        </div>
+      }
+    >
+      <RegisterForm />
+    </React.Suspense>
   )
 }

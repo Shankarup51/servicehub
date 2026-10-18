@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { useGetMeQuery } from "./auth.api";
 import { setCredentials, clearCredentials, setAuthInitialized } from "./auth.slice";
@@ -59,11 +59,11 @@ function AuthInitializerContent() {
 }
 
 export function AuthInitializer() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   if (!mounted) {
     return null;

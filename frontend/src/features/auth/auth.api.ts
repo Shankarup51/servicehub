@@ -45,6 +45,7 @@ export const authApi = baseApi.injectEndpoints({
                 try {
                     const { data } = await queryFulfilled;
 
+                    dispatch(baseApi.util.resetApiState());
                     dispatch(
                         setCredentials({
                             user: data.user,
@@ -76,6 +77,7 @@ export const authApi = baseApi.injectEndpoints({
                     await queryFulfilled;
                 } finally {
                     dispatch(clearCredentials());
+                    dispatch(baseApi.util.resetApiState());
                 }
             },
         }),
