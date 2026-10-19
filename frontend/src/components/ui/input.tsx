@@ -93,7 +93,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             "flex w-full rounded-lg border border-input bg-card text-foreground transition-all duration-200 outline-none placeholder:text-muted-foreground/70",
             "focus:border-primary focus:ring-2 focus:ring-primary/20",
             "disabled:cursor-not-allowed disabled:bg-muted/40 disabled:text-muted-foreground/60 disabled:border-border",
-            error && "border-destructive text-destructive-foreground focus:border-destructive focus:ring-destructive/20",
+            error && "border-destructive focus:border-destructive focus:ring-destructive/20",
             // IMPORTANT: sizeClasses must come BEFORE leftPaddingClass and rightPaddingClass
             // so twMerge does not allow px-* to override pl-* and pr-*
             sizeClasses[inputSize],

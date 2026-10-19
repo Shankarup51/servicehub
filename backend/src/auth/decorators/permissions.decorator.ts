@@ -16,6 +16,8 @@ export type PermissionCode =
   | 'bookings:update'
   | 'bookings:cancel'
   | 'bookings:manage'
+  | 'providers:read'
+  | 'providers:manage'
   | 'providers:verify'
   | 'roles:manage'
   | 'permissions:manage'

@@ -4,7 +4,7 @@ export interface RegisterRequest {
   password: string;
   firstName: string;
   lastName?: string;
-  phone: string;
+  phone?: string;
 }
 
 export interface VerifyEmailRequest {
@@ -22,7 +22,7 @@ export interface AuthUser {
   email: string;
   firstName: string;
   lastName: string | null;
-  phone: string;
+  phone?: string | null;
   emailVerified: boolean;
   status: string;
   roles?: string[];

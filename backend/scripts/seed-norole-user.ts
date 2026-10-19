@@ -27,7 +27,7 @@ async function main() {
     // Delete any existing UserRole records for this user to ensure zero roles
     const existingRoles = await db.orm.public.UserRole.where({ userId: user.id }).all();
     for (const ur of existingRoles) {
-      await db.orm.public.UserRole.where({ userId_roleId: { userId: user.id, roleId: ur.roleId } }).delete();
+      await db.orm.public.UserRole.where({ userId: user.id, roleId: ur.roleId }).delete();
     }
     console.log(`User ${user.id} (${email}) verified with NO roles.`);
   }

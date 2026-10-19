@@ -15,20 +15,16 @@ import { MarketplaceShell, ActiveFilter } from "@/components/layout/marketplace-
 import { StatisticCard } from "@/components/data-display/statistic-card"
 import { StatusBadge } from "@/components/data-display/status-badge"
 import { DataTable, DataTableColumn } from "@/components/data-display/data-table"
+import { Pagination } from "@/components/data-display/pagination"
 import { Button } from "@/components/ui/button"
 import { showSuccessToast, showErrorToast } from "@/shared/ui/toast-service"
 import { cn } from "@/lib/utils"
-
-
-interface PendingProvider {
-  id: string
-  name: string
-  email: string
-  tradeCategory: string
-  licenseNumber: string
-  submittedAt: string
-  status: "PENDING_REVIEW" | "APPROVED" | "REJECTED"
-}
+import {
+  useAdminListVerificationsQuery,
+  useAdminApproveVerificationMutation,
+  useAdminRejectVerificationMutation,
+} from "@/features/providers/providers.api"
+import type { AdminVerificationListItem } from "@/features/providers/providers.types"
 
 interface PlatformBooking {
   id: string
@@ -40,36 +36,6 @@ interface PlatformBooking {
   amount: number
   status: "CONFIRMED" | "PENDING" | "COMPLETED" | "CANCELLED"
 }
-
-const INITIAL_PROVIDERS_QUEUE: PendingProvider[] = [
-  {
-    id: "pv-1",
-    name: "Alex Vance Electrical",
-    email: "alex@vance-electric.com",
-    tradeCategory: "Electrical works",
-    licenseNumber: "LIC-EL-99421",
-    submittedAt: "Oct 17, 2026, 14:30",
-    status: "PENDING_REVIEW",
-  },
-  {
-    id: "pv-2",
-    name: "EcoShine Housekeeping Co.",
-    email: "support@ecoshineclean.com",
-    tradeCategory: "House section",
-    licenseNumber: "LIC-CS-58210",
-    submittedAt: "Oct 16, 2026, 09:15",
-    status: "PENDING_REVIEW",
-  },
-  {
-    id: "pv-3",
-    name: "Precision Pipe Works",
-    email: "contact@precisionpipes.org",
-    tradeCategory: "Plumbing",
-    licenseNumber: "LIC-PL-22019",
-    submittedAt: "Oct 15, 2026, 16:40",
-    status: "APPROVED",
-  },
-]
 
 const INITIAL_PLATFORM_BOOKINGS: PlatformBooking[] = [
   {
@@ -114,29 +80,121 @@ const INITIAL_PLATFORM_BOOKINGS: PlatformBooking[] = [
   },
 ]
 
+function formatDateFriendly(isoString: string | null | undefined): string {
+  if (!isoString) return "N/A"
+  try {
+    const d = new Date(isoString)
+    return d.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    })
+  } catch {
+    return isoString
+  }
+}
+
 export function AdminDashboardView() {
-  const [providerQueue, setProviderQueue] = React.useState<PendingProvider[]>(INITIAL_PROVIDERS_QUEUE)
   const [bookings] = React.useState<PlatformBooking[]>(INITIAL_PLATFORM_BOOKINGS)
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [searchQuery, setSearchQuery] = React.useState<string>("")
+  const [debouncedSearch, setDebouncedSearch] = React.useState<string>("")
   const [sortOption, setSortOption] = React.useState<string>("recent")
+  const [page, setPage] = React.useState(1)
 
-  const handleApproveProvider = (id: string, name: string) => {
-    setProviderQueue((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "APPROVED" } : p))
-    )
-    showSuccessToast("Provider Approved", {
-      description: `${name} has been verified and can now accept bookings.`,
-    })
+  // Debounce search input by 300ms
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = searchQuery.trim()
+      setDebouncedSearch((prev) => {
+        if (prev !== trimmed) {
+          setPage(1)
+        }
+        return trimmed
+      })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Derive sort parameters for server-side query
+  const sortConfig = React.useMemo<{
+    sortBy?: "submittedAt" | "createdAt" | "id"
+    sortOrder?: "asc" | "desc"
+  }>(() => {
+    switch (sortOption) {
+      case "oldest":
+        return { sortBy: "submittedAt", sortOrder: "asc" }
+      case "recent":
+      default:
+        return { sortBy: "submittedAt", sortOrder: "desc" }
+    }
+  }, [sortOption])
+
+  // Map status filter to backend VerificationStatus
+  const statusParam = React.useMemo(() => {
+    if (statusFilter === "PENDING_REVIEW") return "PENDING"
+    if (statusFilter === "APPROVED") return "APPROVED"
+    if (statusFilter === "REJECTED") return "REJECTED"
+    return undefined
+  }, [statusFilter])
+
+  // Server-side verifications query
+  const {
+    data: verificationsData,
+    isLoading: isVerificationsLoading,
+    refetch: refetchVerifications,
+  } = useAdminListVerificationsQuery({
+    page,
+    limit: 10,
+    status: statusParam,
+    search: debouncedSearch || undefined,
+    sortBy: sortConfig.sortBy,
+    sortOrder: sortConfig.sortOrder,
+  })
+
+  // Reliable global counts for sidebar tabs
+  const { data: allCountData } = useAdminListVerificationsQuery({ limit: 1 })
+  const { data: pendingCountData } = useAdminListVerificationsQuery({ status: "PENDING", limit: 1 })
+  const { data: approvedCountData } = useAdminListVerificationsQuery({ status: "APPROVED", limit: 1 })
+
+  const totalAllCount = allCountData?.total ?? 0
+  const pendingCount = pendingCountData?.total ?? 0
+  const approvedCount = approvedCountData?.total ?? 0
+
+  const [approveVerification, { isLoading: isApproving }] = useAdminApproveVerificationMutation()
+  const [rejectVerification, { isLoading: isRejecting }] = useAdminRejectVerificationMutation()
+
+  const handleApproveProvider = async (id: number, name: string) => {
+    try {
+      await approveVerification(id).unwrap()
+      showSuccessToast("Provider Approved", {
+        description: `${name} has been verified and can now accept bookings.`,
+      })
+      refetchVerifications()
+    } catch {
+      showErrorToast("Approval Failed", {
+        description: "Failed to approve provider verification.",
+      })
+    }
   }
 
-  const handleRejectProvider = (id: string, name: string) => {
-    setProviderQueue((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "REJECTED" } : p))
-    )
-    showErrorToast("Provider Rejected", {
-      description: `${name} credentials did not satisfy verification requirements.`,
-    })
+  const handleRejectProvider = async (id: number, name: string) => {
+    try {
+      await rejectVerification({
+        id,
+        data: { rejectionReason: "Credentials did not satisfy verification requirements." },
+      }).unwrap()
+      showErrorToast("Provider Rejected", {
+        description: `${name} verification was rejected.`,
+      })
+      refetchVerifications()
+    } catch {
+      showErrorToast("Rejection Failed", {
+        description: "Failed to reject provider verification.",
+      })
+    }
   }
 
   const activeFilters = React.useMemo<ActiveFilter[]>(() => {
@@ -144,61 +202,66 @@ export function AdminDashboardView() {
     if (statusFilter !== "all") {
       list.push({
         id: "status",
-        label: `Status: ${statusFilter}`,
-        onRemove: () => setStatusFilter("all"),
+        label: `Status: ${statusFilter === "PENDING_REVIEW" ? "Pending Verification" : statusFilter}`,
+        onRemove: () => {
+          setStatusFilter("all")
+          setPage(1)
+        },
       })
     }
-    if (searchQuery.trim()) {
+    if (debouncedSearch) {
       list.push({
         id: "query",
-        label: `"${searchQuery}"`,
-        onRemove: () => setSearchQuery(""),
+        label: `"${debouncedSearch}"`,
+        onRemove: () => {
+          setSearchQuery("")
+          setPage(1)
+        },
       })
     }
     return list
-  }, [statusFilter, searchQuery])
-
-  const filteredQueue = React.useMemo(() => {
-    return providerQueue.filter((p) => {
-      if (statusFilter !== "all" && p.status !== statusFilter) return false
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        return (
-          p.name.toLowerCase().includes(q) ||
-          p.email.toLowerCase().includes(q) ||
-          p.tradeCategory.toLowerCase().includes(q)
-        )
-      }
-      return true
-    })
-  }, [providerQueue, statusFilter, searchQuery])
+  }, [statusFilter, debouncedSearch])
 
   // Provider Queue Columns for DataTable
-  const providerColumns: DataTableColumn<PendingProvider>[] = [
+  const providerColumns: DataTableColumn<AdminVerificationListItem>[] = [
     {
       id: "name",
       header: "Provider Organization",
-      cell: (row) => (
-        <div>
-          <span className="font-semibold text-[#242424] block">{row.name}</span>
-          <span className="text-xs text-[#6B6B6B]">{row.email}</span>
-        </div>
-      ),
+      cell: (row) => {
+        const displayName = row.provider?.displayName || `Provider #${row.providerId}`
+        const userName = `${row.provider?.user?.firstName || ""} ${row.provider?.user?.lastName || ""}`.trim()
+        const email = row.provider?.user?.email || "No email"
+        return (
+          <div>
+            <span className="font-semibold text-[#242424] dark:text-foreground block">{displayName}</span>
+            <span className="text-xs text-[#6B6B6B] dark:text-muted-foreground">{userName ? `${userName} • ${email}` : email}</span>
+          </div>
+        )
+      },
     },
     {
-      id: "category",
-      header: "Trade Category",
+      id: "documents",
+      header: "Documents",
       cell: (row) => (
-        <span className="inline-flex items-center rounded-md bg-[#F5F5F5] px-2.5 py-1 text-xs font-medium text-[#242424]">
-          {row.tradeCategory}
+        <span className="inline-flex items-center rounded-md bg-[#F5F5F5] dark:bg-muted px-2.5 py-1 text-xs font-medium text-[#242424] dark:text-foreground">
+          {row.documentCount} document{row.documentCount === 1 ? "" : "s"} submitted
         </span>
       ),
     },
     {
-      id: "license",
-      header: "License / Credential",
+      id: "reference",
+      header: "Verification ID",
       cell: (row) => (
-        <span className="font-mono text-xs text-[#6B6B6B]">{row.licenseNumber}</span>
+        <span className="font-mono text-xs text-[#6B6B6B] dark:text-muted-foreground">#VER-{row.id}</span>
+      ),
+    },
+    {
+      id: "submittedAt",
+      header: "Submitted",
+      cell: (row) => (
+        <span className="text-xs text-[#6B6B6B] dark:text-muted-foreground">
+          {formatDateFriendly(row.submittedAt || row.createdAt)}
+        </span>
       ),
     },
     {
@@ -209,13 +272,13 @@ export function AdminDashboardView() {
           status={
             row.status === "APPROVED"
               ? "success"
-              : row.status === "PENDING_REVIEW"
+              : row.status === "PENDING"
               ? "warning"
               : "destructive"
           }
           hasDot
         >
-          {row.status === "PENDING_REVIEW" ? "Pending Review" : row.status}
+          {row.status === "PENDING" ? "Pending Review" : row.status}
         </StatusBadge>
       ),
     },
@@ -225,13 +288,19 @@ export function AdminDashboardView() {
       align: "right",
       cell: (row) => (
         <div className="flex items-center justify-end gap-2">
-          {row.status === "PENDING_REVIEW" ? (
+          {row.status === "PENDING" ? (
             <>
               <Button
                 size="sm"
                 variant="primary"
                 className="text-xs h-7 px-2.5"
-                onClick={() => handleApproveProvider(row.id, row.name)}
+                disabled={isApproving || isRejecting}
+                onClick={() =>
+                  handleApproveProvider(
+                    row.id,
+                    row.provider?.displayName || `Provider #${row.providerId}`
+                  )
+                }
               >
                 Approve
               </Button>
@@ -239,13 +308,19 @@ export function AdminDashboardView() {
                 size="sm"
                 variant="outline"
                 className="text-xs h-7 px-2.5 text-[#C74747] border-[#E5E5E5] hover:bg-[#C74747]/10"
-                onClick={() => handleRejectProvider(row.id, row.name)}
+                disabled={isApproving || isRejecting}
+                onClick={() =>
+                  handleRejectProvider(
+                    row.id,
+                    row.provider?.displayName || `Provider #${row.providerId}`
+                  )
+                }
               >
                 Reject
               </Button>
             </>
           ) : (
-            <span className="text-xs text-[#6B6B6B]">Processed</span>
+            <span className="text-xs text-[#6B6B6B] dark:text-muted-foreground">Processed</span>
           )}
         </div>
       ),
@@ -332,16 +407,16 @@ export function AdminDashboardView() {
         </h4>
         <div className="space-y-1.5">
           {[
-            { id: "all", label: "All Submissions", count: providerQueue.length },
+            { id: "all", label: "All Submissions", count: totalAllCount },
             {
               id: "PENDING_REVIEW",
               label: "Pending Verification",
-              count: providerQueue.filter((p) => p.status === "PENDING_REVIEW").length,
+              count: pendingCount,
             },
             {
               id: "APPROVED",
               label: "Approved Providers",
-              count: providerQueue.filter((p) => p.status === "APPROVED").length,
+              count: approvedCount,
             },
           ].map((item) => {
             const isSelected = statusFilter === item.id
@@ -349,7 +424,10 @@ export function AdminDashboardView() {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setStatusFilter(item.id)}
+                onClick={() => {
+                  setStatusFilter(item.id)
+                  setPage(1)
+                }}
                 className={cn(
                   "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left",
                   isSelected
@@ -419,6 +497,10 @@ export function AdminDashboardView() {
     </div>
   )
 
+  const verificationItems = verificationsData?.items || []
+  const totalItems = verificationsData?.total || 0
+  const totalPages = verificationsData?.totalPages || 1
+
   return (
     <MarketplaceShell
       currentRole="ADMIN"
@@ -427,9 +509,12 @@ export function AdminDashboardView() {
       subheading="Oversee marketplace activity, verify service provider credentials, and audit transactions."
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
-      searchPlaceholder="Search providers, users, or license numbers..."
+      searchPlaceholder="Search providers, users, or verification IDs..."
       sortOption={sortOption}
-      onSortChange={setSortOption}
+      onSortChange={(val) => {
+        setSortOption(val)
+        setPage(1)
+      }}
       sortOptions={[
         { label: "Most Recent First", value: "recent" },
         { label: "Oldest First", value: "oldest" },
@@ -438,6 +523,8 @@ export function AdminDashboardView() {
       onClearAllFilters={() => {
         setStatusFilter("all")
         setSearchQuery("")
+        setSortOption("recent")
+        setPage(1)
       }}
       leftPanel={leftFilterPanel}
     >
@@ -449,24 +536,28 @@ export function AdminDashboardView() {
             value="342"
             change={{ value: "+18", isPositive: true, label: "this week" }}
             icon={<Users />}
+            gradient="blue"
           />
           <StatisticCard
             title="Active Service Pros"
             value="48"
             change={{ value: "+4", isPositive: true, label: "verified" }}
             icon={<Briefcase />}
+            gradient="emerald"
           />
           <StatisticCard
             title="Active Services"
             value="128"
             description="Across 9 core home trades"
             icon={<Layers />}
+            gradient="purple"
           />
           <StatisticCard
             title="Total Bookings"
             value="1,240"
             change={{ value: "+8%", isPositive: true, label: "MoM" }}
             icon={<ShoppingBag />}
+            gradient="amber"
           />
         </div>
 
@@ -474,10 +565,10 @@ export function AdminDashboardView() {
         <section className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-[#242424]">
-                Service Provider Verification Queue ({filteredQueue.length})
+              <h2 className="text-base sm:text-lg font-bold text-[#242424] dark:text-foreground">
+                Service Provider Verification Queue ({totalItems})
               </h2>
-              <p className="text-xs text-[#6B6B6B]">
+              <p className="text-xs text-[#6B6B6B] dark:text-muted-foreground">
                 Review professional trade licenses, background clearances, and approve onboarding.
               </p>
             </div>
@@ -492,20 +583,37 @@ export function AdminDashboardView() {
           </div>
 
           <DataTable
-            data={filteredQueue}
+            data={verificationItems}
             columns={providerColumns}
-            emptyMessage="No pending provider verifications in queue."
+            isLoading={isVerificationsLoading}
+            emptyMessage={
+              statusFilter !== "all" || debouncedSearch
+                ? "No provider verifications match the current filter or search criteria."
+                : "No pending provider verifications in queue."
+            }
           />
+
+          {totalPages > 1 && (
+            <div className="pt-2">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                pageSize={10}
+                onPageChange={(p) => setPage(p)}
+              />
+            </div>
+          )}
         </section>
 
         {/* Recent Platform Transactions & Bookings */}
         <section className="pt-8 border-t border-[#E5E5E5] space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-[#242424]">
+              <h2 className="text-base sm:text-lg font-bold text-[#242424] dark:text-foreground">
                 Recent Platform Bookings & Transactions
               </h2>
-              <p className="text-xs text-[#6B6B6B]">
+              <p className="text-xs text-[#6B6B6B] dark:text-muted-foreground">
                 Live stream of service appointments scheduled across all active categories.
               </p>
             </div>

@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export interface ServiceCardProps {
-  id: string
+  id: string | number
   title: string
   description?: string
   category: string
   price: number
   priceType?: "HOURLY" | "FIXED"
-  rating?: number
-  reviewCount?: number
+  rating?: number | null
+  reviewCount?: number | null
   providerName?: string
   durationMinutes?: number
   imageUrl?: string
@@ -28,10 +28,11 @@ export function ServiceCard({
   description,
   category,
   price,
-  priceType = "HOURLY",
-  rating = 4.9,
-  reviewCount = 28,
-  providerName = "Verified Pro",
+  priceType = "FIXED",
+  rating,
+  reviewCount,
+  providerName,
+  durationMinutes,
   imageUrl,
   href = `/services/${id}`,
   onBook,
@@ -73,19 +74,31 @@ export function ServiceCard({
         </Link>
 
         {/* Rating & Pro / Category info */}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1 text-[#F5A623] font-semibold">
-            <Star className="size-3.5 fill-[#F5A623] stroke-[#F5A623]" />
-            <span className="text-foreground">{rating.toFixed(1)}</span>
-            <span className="text-muted-foreground font-normal">({reviewCount} reviews)</span>
+        {(rating != null || providerName || durationMinutes != null) && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+            {rating != null && (
+              <div className="flex items-center gap-1 text-[#F5A623] font-semibold">
+                <Star className="size-3.5 fill-[#F5A623] stroke-[#F5A623]" />
+                <span className="text-foreground">{rating.toFixed(1)}</span>
+                {reviewCount != null && (
+                  <span className="text-muted-foreground font-normal">({reviewCount} reviews)</span>
+                )}
+              </div>
+            )}
+            {providerName && (
+              <>
+                {rating != null && <span className="text-border">•</span>}
+                <span className="truncate max-w-[140px]">{providerName}</span>
+              </>
+            )}
+            {durationMinutes != null && (
+              <>
+                {(rating != null || providerName) && <span className="text-border">•</span>}
+                <span>{durationMinutes} mins</span>
+              </>
+            )}
           </div>
-          {providerName && (
-            <>
-              <span className="text-border">•</span>
-              <span className="truncate max-w-[120px]">{providerName}</span>
-            </>
-          )}
-        </div>
+        )}
 
         {/* Description (if provided) */}
         {description && (

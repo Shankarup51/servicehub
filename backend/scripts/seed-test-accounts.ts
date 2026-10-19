@@ -41,7 +41,7 @@ async function main() {
   console.log('Seeding / verifying test accounts...');
 
   for (const acc of TEST_ACCOUNTS) {
-    const role = await db.orm.public.Role.where({ name: acc.roleName }).first();
+    const role = await db.orm.public.Role.where({ name: acc.roleName as any }).first();
     if (!role) {
       console.error(`Role ${acc.roleName} not found! Run seed-roles.ts first.`);
       continue;

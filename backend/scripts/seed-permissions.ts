@@ -97,12 +97,22 @@ const PERMISSIONS_TO_SEED: readonly SeedPermission[] = [
     category: 'planned',
   },
 
-  // Administrative Management & Platform Governance (Planned - backed by ProviderVerification, Role, Permission, AuditLog schema models)
+  // Provider Profile & Verification Management
+  {
+    code: 'providers:read',
+    description: 'View provider profile, service areas, and verification status',
+    category: 'implemented',
+  },
+  {
+    code: 'providers:manage',
+    description: 'Create and update provider profile, service areas, and verification documents',
+    category: 'implemented',
+  },
   {
     code: 'providers:verify',
     description:
       'Review and approve or reject provider verification applications',
-    category: 'planned',
+    category: 'implemented',
   },
   {
     code: 'roles:manage',

@@ -385,7 +385,7 @@ export function MarketplaceShell({
             {/* Section Heading & Subheading */}
             {heading && (
               <div className="space-y-1">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#242424]">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                   {heading}
                 </h1>
                 {subheading && (

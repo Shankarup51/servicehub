@@ -53,7 +53,7 @@ export function FormField({
       {hasErrorMessage && (
         <div
           role="alert"
-          className="flex items-center gap-1.5 text-xs text-destructive-foreground mt-0.5 animate-in fade-in-50 duration-150"
+          className="flex items-center gap-1.5 text-xs text-destructive mt-0.5 animate-in fade-in-50 duration-150"
         >
           <AlertCircle className="size-3.5 shrink-0" />
           <span>{error}</span>

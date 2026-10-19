@@ -8,5 +8,9 @@ export default function ProtectedRouteGroupLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <ProtectedRoute>{children}</ProtectedRoute>;
+  return (
+    <React.Suspense fallback={null}>
+      <ProtectedRoute>{children}</ProtectedRoute>
+    </React.Suspense>
+  );
 }

@@ -88,6 +88,15 @@ function RegisterForm() {
       return
     }
 
+    let cleanPhone: string | undefined = undefined
+    if (phone.trim()) {
+      cleanPhone = phone.replace(/[^0-9]/g, "")
+      if (cleanPhone.length < 10 || cleanPhone.length > 15) {
+        setErrorMessage("Phone number must contain 10 to 15 digits.")
+        return
+      }
+    }
+
     const emailToSubmit = email.trim().toLowerCase()
 
     try {
@@ -95,7 +104,7 @@ function RegisterForm() {
         firstName: firstName.trim(),
         lastName: lastName.trim() || undefined,
         email: emailToSubmit,
-        phone: phone.trim() ? phone.replace(/[^0-9]/g, "") : "9876543210",
+        phone: cleanPhone,
         password,
       }).unwrap()
 
@@ -225,10 +234,10 @@ function RegisterForm() {
               />
             </FormField>
 
-            <FormField label="Phone Number">
+            <FormField label="Phone Number" hint="Optional">
               <Input
                 type="tel"
-                placeholder="9876543210"
+                placeholder="e.g. 9876543210 (optional)"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 leftIcon={<Phone className="size-4" />}

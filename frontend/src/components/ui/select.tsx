@@ -23,7 +23,7 @@ export const SelectTrigger = React.forwardRef<
       "focus:border-primary focus:ring-2 focus:ring-primary/20",
       "disabled:cursor-not-allowed disabled:bg-muted/40 disabled:text-muted-foreground/60 disabled:border-border",
       "data-[placeholder]:text-muted-foreground/70",
-      error && "border-destructive text-destructive-foreground focus:border-destructive focus:ring-destructive/20",
+      error && "border-destructive focus:border-destructive focus:ring-destructive/20",
       className
     )}
     {...props}
